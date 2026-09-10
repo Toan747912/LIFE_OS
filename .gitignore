@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.env
+venv/
+.venv/
+env/
+
+# Large media files (GitHub max file size limit is 100MB)
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.mp3
+*.wav
+
+# Output files
+core/output/*
+!core/output/.gitkeep
+modules/video_dubbing/output/*
+!modules/video_dubbing/output/.gitkeep
+
+# System & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
