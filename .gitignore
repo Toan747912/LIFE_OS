@@ -29,3 +29,5 @@ modules/video_dubbing/output/*
 Thumbs.db
 .vscode/
 .idea/
+*.bak*
+

@@ -1,36 +1,53 @@
 import os
-from core.config import INPUT_DIR, OUTPUT_DIR, DEFAULT_VOICE
-from modules.video_dubbing.sub_handler import load_subtitles
-from modules.video_dubbing.tts_generator import generate_tts_for_subtitles
-from modules.video_dubbing.media_mixer import mix_audio_to_video
+import sys
+
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
+from core.config import DEFAULT_VOICE
+from modules.video_dubbing.service import DubbingConfig, run_dubbing_pipeline
 
 def main():
-    os.makedirs(INPUT_DIR, exist_ok=True)
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    print("\n========================================")
+    print("   ỨNG DỤNG LỒNG TIẾNG VIDEO (LIVE OS)")
+    print("========================================")
     
-    temp_audio_dir = os.path.join(OUTPUT_DIR, "temp_audios")
+    video_path = "core/input/sample.mp4"
+    vtt_path = "core/input/sample.vtt"
+    output_video_path = "core/output/output_final.mp4"
 
-    print("--- Khởi động ứng dụng lồng tiếng tối ưu cho máy yếu ---")
-    
-    # Định nghĩa tên file đầu vào/đầu ra giả định
-    sample_srt = os.path.join(INPUT_DIR, "sample.vtt")
-    sample_video = os.path.join(INPUT_DIR, "sample.mp4")
-    output_video = os.path.join(OUTPUT_DIR, "output_final.mp4")
-    
-    if os.path.exists(sample_srt) and os.path.exists(sample_video):
-        # Bước 1: Đọc phụ đề
-        subs = load_subtitles(sample_srt)
-        print(f"Đã tải thành công {len(subs)} câu thoại.")
-        
-        # Bước 2: Tạo file audio tuần tự từng câu
-        audio_map = generate_tts_for_subtitles(subs, DEFAULT_VOICE, temp_audio_dir)
-        print(f"Hoàn tất tạo {len(audio_map)} file âm thanh tạm.")
-        
-        # Bước 3: Ghép vào video
-        mix_audio_to_video(sample_video, audio_map, output_video)
-        print("Xử lý toàn bộ quy trình thành công!")
-    else:
-        print(f"Lưu ý: Hãy đặt file 'sample.srt' và 'sample.mp4' vào thư mục '{INPUT_DIR}' để chạy thử.")
+    if not os.path.exists(video_path) or not os.path.exists(vtt_path):
+        print(f"[Lỗi]: Không tìm thấy file '{video_path}' hoặc '{vtt_path}' trong core/input/ !")
+        return
+
+    try:
+        orig_input = input("Nhập âm lượng video gốc làm nền (Khuyên dùng 0.15, nhấn Enter để chọn 0.15): ").strip()
+        orig_vol = float(orig_input) if orig_input else 0.15
+    except ValueError:
+        orig_vol = 0.15
+
+    try:
+        dub_input = input("Nhập âm lượng tiếng Việt lồng tiếng (Khuyên dùng 1.0, nhấn Enter để chọn 1.0): ").strip()
+        dub_vol = float(dub_input) if dub_input else 1.0
+    except ValueError:
+        dub_vol = 1.0
+
+    config = DubbingConfig(
+        video_path=video_path,
+        subtitle_path=vtt_path,
+        output_video_path=output_video_path,
+        voice=DEFAULT_VOICE,
+        orig_vol=orig_vol,
+        dub_vol=dub_vol,
+        hard_sub=False
+    )
+
+    try:
+        result = run_dubbing_pipeline(config)
+        print(f"\nXử lý thành công! Video lưu tại: {result['output_path']}")
+    except Exception as e:
+        print(f"\n[Lỗi xử lý]: {e}")
 
 if __name__ == "__main__":
     main()

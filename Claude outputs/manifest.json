@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube VI Subtitle Translator",
+  "version": "1.0.0",
+  "description": "Dịch phụ đề tiếng Anh trên YouTube sang tiếng Việt theo thời gian thực.",
+
+  "permissions": [
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "http://127.0.0.1:8000/*"
+  ],
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/watch*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

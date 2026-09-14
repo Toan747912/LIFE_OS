@@ -1,78 +1,77 @@
 import os
+import re
 from datetime import timedelta
 
-def parse_time_vtt(time_str):
-    """Chuyển đổi chuỗi thời gian VTT (hh:mm:ss.mmm hoặc mm:ss.mmm) thành timedelta"""
-    parts = time_str.strip().split(':')
+def parse_time(time_str):
+    """Chuyển đổi chuỗi thời gian SRT/VTT thành timedelta"""
+    time_str = time_str.strip().replace(',', '.')
+    parts = time_str.split(':')
     if len(parts) == 3:
-        hours, minutes, seconds_ms = parts
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        seconds_parts = parts[2].split('.')
+        seconds = int(seconds_parts[0])
+        milliseconds = int(seconds_parts[1]) if len(seconds_parts) > 1 else 0
     elif len(parts) == 2:
         hours = 0
-        minutes, seconds_ms = parts
+        minutes = int(parts[0])
+        seconds_parts = parts[1].split('.')
+        seconds = int(seconds_parts[0])
+        milliseconds = int(seconds_parts[1]) if len(seconds_parts) > 1 else 0
     else:
         raise ValueError(f"Định dạng thời gian không hợp lệ: {time_str}")
-    
-    seconds, milliseconds = seconds_ms.split('.')
+
     return timedelta(
-        hours=int(hours),
-        minutes=int(minutes),
-        seconds=int(seconds),
-        milliseconds=int(milliseconds)
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds,
+        milliseconds=milliseconds
     )
 
-def load_subtitles(vtt_path):
-    """Đọc file .vtt thủ công, nhẹ nhàng, không tốn tài nguyên máy"""
-    if not os.path.exists(vtt_path):
-        raise FileNotFoundError(f"Không tìm thấy file vtt tại: {vtt_path}")
-    
-    with open(vtt_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-    
+def clean_subtitle_text(raw_text):
+    """Làm sạch các thẻ định dạng HTML/VTT và khoảng trắng thừa"""
+    # Xóa thẻ HTML dạng <v Speaker>, <b>, <i>, <font>, ...
+    text = re.sub(r'<[^>]+>', '', raw_text)
+    # Xóa tham số vị trí VTT (align, position, line, ...)
+    text = re.sub(r'\b(align|position|line|size|region):[^\s]+\b', '', text)
+    # Thay ngắt dòng thành khoảng trắng
+    text = text.replace('\n', ' ')
+    # Xóa khoảng trắng thừa
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+def load_subtitles(file_path):
+    """Đọc file phụ đề (.vtt hoặc .srt) và trả về danh sách câu thoại chuẩn hóa"""
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Không tìm thấy file phụ đề tại: {file_path}")
+
+    with open(file_path, "r", encoding="utf-8-sig") as f:
+        content = f.read()
+
+    # Regex khớp với thời gian trong cả VTT và SRT
+    pattern = r'(?:(\d{2}:\d{2}:\d{2}[\.,]\d{3}) --> (\d{2}:\d{2}:\d{2}[\.,]\d{3})|(\d{2}:\d{2}[\.,]\d{3}) --> (\d{2}:\d{2}[\.,]\d{3}))\s*\n(.*?)(?=\n\s*\n|\Z)'
+    matches = re.findall(pattern, content, re.DOTALL)
+
     parsed_subs = []
-    i = 0
-    index = 1
-    
-    while i < len(lines):
-        line = lines[i].strip()
-        
-        # Bỏ qua dòng WEBVTT header hoặc dòng trống
-        if not line or line.startswith("WEBVTT") or "-->" not in line and not line.isdigit():
-            i += 1
+    for i, match in enumerate(matches, 1):
+        start_str = match[0] if match[0] else match[2]
+        end_str = match[1] if match[1] else match[3]
+        raw_text = match[4]
+
+        cleaned_text = clean_subtitle_text(raw_text)
+        if not cleaned_text:
             continue
-            
-        # Nếu dòng hiện tại là số thứ tự hoặc nhảy thẳng vào dòng thời gian có dấu "-->"
-        if "-->" in line:
-            time_line = line
-            i += 1
-        elif i + 1 < len(lines) and "-->" in lines[i + 1]:
-            # Dòng hiện tại là index, dòng sau là thời gian
-            i += 1
-            time_line = lines[i].strip()
-            i += 1
-        else:
-            i += 1
-            continue
-            
-        # Tách thời gian bắt đầu và kết thúc
-        start_str, end_str = time_line.split("-->")
-        start_time = parse_time_vtt(start_str.strip().split(" ")[0])
-        end_time = parse_time_vtt(end_str.strip().split(" ")[0])
-        
-        # Gom các dòng nội dung tiếp theo cho đến khi gặp dòng trống
-        content_lines = []
-        while i < len(lines) and lines[i].strip() != "":
-            content_lines.append(lines[i].strip())
-            i += 1
-            
-        content = " ".join(content_lines)
-        
-        if content:
-            parsed_subs.append({
-                "index": index,
-                "start": start_time,
-                "end": end_time,
-                "content": content
-            })
-            index += 1
-            
+
+        start_time = parse_time(start_str)
+        end_time = parse_time(end_str)
+        duration_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        parsed_subs.append({
+            "index": i,
+            "start": start_time,
+            "end": end_time,
+            "duration_ms": duration_ms,
+            "content": cleaned_text
+        })
+
     return parsed_subs

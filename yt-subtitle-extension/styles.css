@@ -1,0 +1,53 @@
+/*
+ * YouTube VI Subtitle Translator - Styles
+ * Định dạng dòng phụ đề tiếng Việt chèn bên dưới phụ đề tiếng Anh gốc.
+ */
+
+.vi-translated-sub {
+  /* Ngắt dòng riêng, tách biệt với tiếng Anh */
+  display: block;
+
+  /* Màu vàng nổi bật */
+  color: #fbbf24;
+
+  /* Đổ bóng đen để đọc được trên mọi nền video */
+  text-shadow:
+    2px 2px 2px #000,
+    -1px -1px 2px #000,
+    1px -1px 2px #000,
+    -1px  1px 2px #000;
+
+  /* To hơn 10% so với font-size của parent (kế thừa từ YouTube) */
+  font-size: 1.1em;
+
+  /* Giữ nguyên font gốc của YouTube để đồng nhất */
+  font-family: inherit;
+  font-weight: inherit;
+
+  /* Khoảng cách nhỏ để tách khỏi dòng tiếng Anh */
+  margin-top: 2px;
+
+  /* Đảm bảo xuống dòng đúng khi text dài */
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  /* Căn giữa theo YouTube */
+  text-align: center;
+
+  /* Pointer events off để không chặn click tương tác video */
+  pointer-events: none;
+
+  /* Animation mượt khi bản dịch xuất hiện */
+  animation: vi-sub-fadein 0.15s ease-in;
+}
+
+@keyframes vi-sub-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -4,6 +4,10 @@ import os
 # Thêm thư mục hiện tại vào đường dẫn tìm kiếm module của Python
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 
 from modules.video_dubbing.main import main as run_video_dubbing
 

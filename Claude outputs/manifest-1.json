@@ -1,0 +1,69 @@
+{
+  "manifest_version": 3,
+  "name": "Vietnamese Auto-Dubbing",
+  "version": "1.0.0",
+  "description": "Lồng tiếng Việt tự động cho video Coursera, YouTube, Udemy",
+
+  // ─── Service Worker (Background) ───────────────────────────────────────────
+  // background.js đóng vai trò "tổng đài" – nhận lệnh từ top window
+  // rồi broadcast xuống tất cả iframe trong cùng tab.
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  // ─── Content Scripts ────────────────────────────────────────────────────────
+  "content_scripts": [
+    {
+      // Khớp với Coursera, YouTube, Udemy – thêm origin tuỳ ý
+      "matches": [
+        "https://www.coursera.org/*",
+        "https://www.youtube.com/*",
+        "https://www.udemy.com/*"
+      ],
+      "js": ["content.js"],
+
+      // ✅ QUAN TRỌNG NHẤT:
+      // "all_frames": true → Chrome sẽ bơm content.js vào MỌI iframe
+      // trên trang, kể cả iframe khác origin (Coursera embed video).
+      // Không có cờ này, script chỉ chạy ở top-level document.
+      "all_frames": true,
+
+      // "run_at": "document_end" → đảm bảo DOM đã sẵn sàng trước khi
+      // script thực thi, tránh lỗi querySelector trả về null.
+      "run_at": "document_end"
+    }
+  ],
+
+  // ─── Permissions ────────────────────────────────────────────────────────────
+  "permissions": [
+    "activeTab",   // Cho phép gửi message tới tab hiện tại
+    "tabs",        // Cần để chrome.tabs.sendMessage trong background.js
+    "scripting"    // Dự phòng nếu cần inject script động sau này
+  ],
+
+  // ─── Web Accessible Resources ───────────────────────────────────────────────
+  // Khai báo các file mà trang web (kể cả iframe) được phép truy cập.
+  // Bắt buộc nếu content.js cần load thêm asset từ extension.
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*", "audio/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  // ─── Icons ──────────────────────────────────────────────────────────────────
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "48":  "icons/icon48.png"
+    }
+  }
+}
