@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "VI Subtitle Translator & TTS",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Tự động phát hiện phụ đề video trên mọi trang web, dịch sang tiếng Việt và đọc to.",
 
   "permissions": [
@@ -15,8 +15,18 @@
 
   "content_scripts": [
     {
+      "_comment": "phim.nguonc.com — adapter riêng, không chạy generic",
+      "matches": ["*://phim.nguonc.com/*"],
+      "js": ["core.js", "sites/phim.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "_comment": "Mọi trang khác (YouTube, Coursera, ...) — generic adapter",
       "matches": ["*://*/*"],
-      "js": ["content.js"],
+      "exclude_matches": ["*://phim.nguonc.com/*"],
+      "js": ["core.js", "sites/generic.js"],
       "css": ["styles.css"],
       "run_at": "document_idle",
       "all_frames": true
