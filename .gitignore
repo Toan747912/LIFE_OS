@@ -31,3 +31,6 @@ Thumbs.db
 .idea/
 *.bak*
 
+
+# Bilibili Dubbing: database, cookie, thư viện video
+data/bilibili_dubbing/

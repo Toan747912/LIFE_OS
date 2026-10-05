@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bilibili Dubbing · LIFE_OS</title>
+  <link rel="stylesheet" href="/bilibili/static/bilibili.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Bilibili Dubbing</h1>
+    <a class="back" href="/">← Trang lồng tiếng cũ</a>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="create" role="tab">Tạo mới</button>
+    <button class="tab" data-tab="queue" role="tab">Hàng đợi</button>
+    <button class="tab" data-tab="review" role="tab">Duyệt phụ đề</button>
+    <button class="tab" data-tab="library" role="tab">Thư viện</button>
+    <button class="tab" data-tab="settings" role="tab">Cài đặt</button>
+  </nav>
+
+  <main>
+    <div id="health" class="notices"></div>
+
+    <section id="tab-create" class="panel active">
+      <h2>1. Dán link</h2>
+      <p class="hint">Mỗi dòng một link bilibili.com / b23.tv hoặc mã BV. Hỗ trợ video đơn, video nhiều phần, series và bangumi.</p>
+      <textarea id="urls" rows="4" placeholder="https://www.bilibili.com/video/BV..."></textarea>
+      <div class="row">
+        <button id="scan-btn" class="primary">Quét</button>
+        <span id="scan-status" class="status"></span>
+      </div>
+
+      <div id="options" class="options hidden">
+        <h2>2. Tùy chọn lồng tiếng</h2>
+        <div class="grid">
+          <label>Giọng đọc
+            <select id="opt-voice">
+              <option value="vi-VN-HoaiMyNeural">Hoài My (nữ)</option>
+              <option value="vi-VN-NamMinhNeural">Nam Minh (nam)</option>
+            </select>
+          </label>
+          <label>Âm lượng tiếng gốc <span id="opt-orig-val">15%</span>
+            <input id="opt-orig" type="range" min="0" max="100" value="15">
+          </label>
+          <label>Âm lượng giọng Việt <span id="opt-dub-val">100%</span>
+            <input id="opt-dub" type="range" min="50" max="200" value="100">
+          </label>
+          <label class="check"><input id="opt-keep" type="checkbox"> Giữ lại video gốc sau khi xong</label>
+        </div>
+      </div>
+
+      <div id="results"></div>
+
+      <div id="start-bar" class="start-bar hidden">
+        <span id="selection-summary"></span>
+        <button id="start-btn" class="primary">Bắt đầu</button>
+      </div>
+    </section>
+
+    <section id="tab-queue" class="panel">
+      <h2>Hàng đợi</h2>
+      <p class="hint">Mỗi lúc xử lý một video: tải, lấy phụ đề, dịch, rồi dừng chờ bạn duyệt. Sau khi duyệt, module sinh giọng đọc tiếng Việt, trộn vào video và đưa vào thư viện.</p>
+      <div class="row"><button id="queue-clear" class="small hidden">Dọn các job đã hoàn tất</button><span id="queue-message" class="status"></span></div>
+      <div id="queue-list"></div>
+    </section>
+    <section id="tab-review" class="panel">
+      <div id="review-list-view">
+        <h2>Duyệt phụ đề</h2>
+        <p class="hint">Các video đã dịch xong và đang chờ bạn xem lại bản tiếng Việt trước khi đi tiếp.</p>
+        <div id="review-message" class="status"></div>
+        <div id="review-list"></div>
+      </div>
+      <div id="review-editor" class="hidden"></div>
+    </section>
+    <section id="tab-library" class="panel">
+      <div id="library-list-view">
+        <h2>Thư viện</h2>
+        <div class="toolbar">
+          <input id="lib-q" type="text" placeholder="Tìm theo tên, ghi chú, series, tag (không cần gõ dấu)">
+          <select id="lib-series" title="Lọc theo series"></select>
+          <select id="lib-tag" title="Lọc theo tag"></select>
+          <select id="lib-status" title="Lọc theo trạng thái">
+            <option value="">Mọi trạng thái</option>
+            <option value="dubbed">Đã lồng tiếng</option>
+            <option value="undubbed">Chưa lồng tiếng</option>
+          </select>
+          <select id="lib-sort" title="Sắp xếp">
+            <option value="newest">Mới nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="title">Theo tên</option>
+            <option value="size">Dung lượng lớn nhất</option>
+            <option value="duration">Dài nhất</option>
+          </select>
+        </div>
+        <div id="library-message" class="status"></div>
+        <div id="library-grid" class="library-grid"></div>
+      </div>
+      <div id="player-view" class="hidden"></div>
+    </section>
+    <section id="tab-settings" class="panel">
+      <h2>Cookie đăng nhập Bilibili</h2>
+      <p class="hint">Cần cho video yêu cầu đăng nhập, chất lượng trên 480p và phụ đề AI. Cookie chỉ lưu trên máy này (data/bilibili_dubbing/cookies.txt) và không hiển thị lại sau khi lưu.</p>
+      <div id="cookie-status" class="notice"></div>
+      <details class="howto" open>
+        <summary>Cách lấy cookie</summary>
+        <ol>
+          <li>Đăng nhập Bilibili trên trình duyệt (bilibili.tv hoặc bilibili.com, đúng trang của link bạn muốn tải).</li>
+          <li>Cài extension <b>Get cookies.txt LOCALLY</b> từ Chrome Web Store (Edge cài được).</li>
+          <li>Mở trang Bilibili, bấm biểu tượng extension, chọn <b>Copy</b> (hoặc Export rồi mở file bằng Notepad và sao chép toàn bộ).</li>
+          <li>Dán vào ô bên dưới rồi bấm Lưu cookie.</li>
+        </ol>
+        <p class="hint">Cách không cần extension: nhấn F12, tab Application, mục Cookies, chọn trang Bilibili, sao chép giá trị của dòng <b>SESSDATA</b> rồi dán vào ô bên dưới và chọn đúng trang.</p>
+      </details>
+      <label class="field">Trang (chỉ dùng khi dán riêng giá trị SESSDATA)
+        <select id="cookie-site">
+          <option value="bilibili.tv">bilibili.tv (quốc tế)</option>
+          <option value="bilibili.com">bilibili.com (Trung Quốc)</option>
+        </select>
+      </label>
+      <textarea id="cookie-text" rows="6" placeholder="Dán nội dung cookies.txt hoặc giá trị SESSDATA vào đây" autocomplete="off" spellcheck="false"></textarea>
+      <div class="row">
+        <button id="cookie-save" class="primary">Lưu cookie</button>
+        <button id="cookie-check">Kiểm tra đăng nhập</button>
+        <button id="cookie-delete">Xóa cookie đã lưu</button>
+        <span id="cookie-message" class="status"></span>
+      </div>
+
+      <h2>Mặc định khi tạo mới</h2>
+      <div class="options"><div class="grid">
+        <label>Giọng đọc
+          <select id="set-voice">
+            <option value="vi-VN-HoaiMyNeural">Hoài My (nữ)</option>
+            <option value="vi-VN-NamMinhNeural">Nam Minh (nam)</option>
+          </select>
+        </label>
+        <label>Âm lượng tiếng gốc <span id="set-orig-val"></span>
+          <input id="set-orig" type="range" min="0" max="100">
+        </label>
+        <label>Âm lượng giọng Việt <span id="set-dub-val"></span>
+          <input id="set-dub" type="range" min="50" max="200">
+        </label>
+        <label>Model Whisper (bóc băng)
+          <select id="set-whisper"></select>
+        </label>
+        <label class="check"><input id="set-keep" type="checkbox"> Giữ lại video gốc</label>
+      </div></div>
+      <p class="hint">Model Whisper lớn hơn nhận dạng tốt hơn nhưng chậm hơn và phải tải thêm file ở lần dùng đầu.</p>
+      <div class="row"><button id="set-save" class="primary">Lưu mặc định</button><span id="set-message" class="status"></span></div>
+
+      <h2>Nơi lưu và dung lượng</h2>
+      <div id="storage-summary" class="storage-summary"></div>
+      <label class="field wide">Chuyển thư viện sang thư mục khác (đường dẫn tuyệt đối, thư mục phải trống)
+        <input id="storage-path" type="text" placeholder="D:\Videos\Bilibili" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="row"><span id="storage-move-slot"></span><span id="storage-message" class="status"></span></div>
+      <p class="hint">Module sao chép toàn bộ sang nơi mới, kiểm tra đủ file rồi mới xóa nơi cũ. Trong lúc chuyển, job mới sẽ chờ.</p>
+
+      <h3>Dọn dẹp</h3>
+      <div id="cleanup-list"></div>
+      <div class="row"><span id="cleanup-slot"></span><span id="cleanup-message" class="status"></span></div>
+
+      <h2>Series và tag</h2>
+      <div id="taxonomy-message" class="status"></div>
+      <div class="taxonomy">
+        <div><h3>Series</h3><div id="series-list"></div></div>
+        <div><h3>Tag</h3><div id="tag-list"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/bilibili/static/bilibili.js"></script>
+</body>
+</html>

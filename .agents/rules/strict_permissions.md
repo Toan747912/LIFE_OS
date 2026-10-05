@@ -1,15 +1,20 @@
 ---
-description: Rule ngăn chặn AI tự ý sửa đổi code/file ngoài phạm vi cấp phép của người dùng
+description: Luật cứng của LIFE_OS. Đọc vault/AI/Bắt đầu ở đây.md trước khi sửa bất cứ thứ gì.
 ---
 
-# Scope & Permission Guardrails
+# LIFE_OS — Luật cứng
 
-1. **Permission Boundary**:
-   - Only edit files and features explicitly requested by the user.
-   - Do NOT refactor, clean up, or rewrite unrelated files without user authorization.
+Trước khi tạo, sửa hay xóa file: đọc `vault/AI/Bắt đầu ở đây.md` và `vault/Dự án/Trạng thái.md`.
 
-2. **Reporting & Approval**:
-   - If a bug or improvement is identified in an unauthorized file, propose it to the user and wait for approval before making changes.
+1. **Chỉ sửa file người dùng đã giao trong phiên này.** Mọi file khác là cấm đụng: không refactor, không "dọn dẹp", không sửa giúp.
+2. **Không sửa module Stable**: `modules/video_dubbing/`, `modules/dynamic_subtitle.py`, `modules/file_manager.py`, `yt-subtitle-extension/`, `templates/index.html`. Được gọi lại nguyên trạng, không được đổi.
+3. **Không đổi tên endpoint, không đổi hình dạng JSON trả về.**
+4. **Không thêm, bớt, đổi phiên bản thư viện** khi chưa được đồng ý.
+5. **Thấy lỗi ngoài phạm vi thì báo, không sửa.**
+6. **Không báo "xong" khi chưa kiểm chứng.** Nói rõ cái gì đã chạy thử, cái gì chưa.
+7. **Không commit, không push khi chưa được yêu cầu.** Trước khi commit phải `git status` và `git diff`.
+8. **Kết thúc nhiệm vụ phải cập nhật vault**: Trạng thái, Change log, Việc cần làm, nhật ký phiên.
 
-3. **No Unintended Side Effects**:
-   - Preserve existing structure, logic, and configurations outside the active task scope.
+Chi tiết: `AGENTS.md` ở thư mục gốc và thư mục `vault/`.
+
+<!-- Chép từ vault/AI/Bắt đầu ở đây.md. Sửa ở đó trước rồi đồng bộ sang đây. -->
