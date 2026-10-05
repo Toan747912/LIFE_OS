@@ -1,6 +1,6 @@
 import os
 import shutil
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Request, Query
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +18,8 @@ from modules.file_manager import (
 # Khởi tạo ứng dụng FastAPI
 app = FastAPI(title="LIFE_OS Video Dubbing API")
 templates = Jinja2Templates(directory="templates")
+import inspect
+_TEMPLATE_REQUEST_FIRST = next(iter(inspect.signature(templates.TemplateResponse).parameters), "") != "name"
 
 # ─── CORS Middleware ───────────────────────────────────────────────────────────
 # Cho phép Chrome Extension từ bất kỳ trang web nào gọi vào backend
@@ -28,6 +30,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ─── Module Bilibili Dubbing (router riêng, không ảnh hưởng endpoint cũ) ───────
+from modules.bilibili_dubbing import router as bilibili_router
+app.include_router(bilibili_router)
+
 # Trạng thái tiến trình xử lý toàn cục cho video dài
 status_state = {"progress": 0, "message": "Chưa xử lý", "is_done": False}
 
@@ -37,6 +43,9 @@ def progress_callback(percent: int, message: str):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    # Starlette mới nhận (request, name); bản cũ nhận (name, context). Chạy được với cả hai.
+    if _TEMPLATE_REQUEST_FIRST:
+        return templates.TemplateResponse(request, "index.html")
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/start-dubbing")
@@ -54,6 +63,9 @@ async def start_dubbing(
     ghép với UPLOAD_DIR tạo đường dẫn tuyệt đối/tương đối rồi truyền vào DubbingConfig.
     """
     ensure_upload_dir()
+    # Chỉ nhận tên file nằm trong UPLOAD_DIR (bỏ mọi phần thư mục trong tên gửi lên)
+    video_name = os.path.basename(video_name)
+    subtitle_name = os.path.basename(subtitle_name)
     video_path = os.path.join(UPLOAD_DIR, video_name)
     subtitle_path = os.path.join(UPLOAD_DIR, subtitle_name)
 
@@ -178,6 +190,44 @@ try:
 except ImportError:
     _EDGE_TTS_AVAILABLE = False
 
+async def _synthesize_tts(text: str):
+    """Sinh MP3 bằng edge-tts và trả về; file tạm được xóa sau khi gửi xong."""
+    if not _EDGE_TTS_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="edge-tts chưa được cài. Chạy: pip install edge-tts"
+        )
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="text không được rỗng")
+
+    # Tạo file tạm để ghi MP3
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+        tmp_path = f.name
+
+    try:
+        communicate = _edge_tts.Communicate(text.strip(), voice=EDGE_TTS_VOICE)
+        await communicate.save(tmp_path)
+    except Exception as e:
+        _remove_quietly(tmp_path)
+        raise HTTPException(status_code=500, detail=f"TTS lỗi: {str(e)}")
+
+    cleanup = BackgroundTasks()
+    cleanup.add_task(_remove_quietly, tmp_path)   # xóa file tạm sau khi gửi
+    return FileResponse(
+        tmp_path,
+        media_type="audio/mpeg",
+        filename="tts.mp3",
+        background=cleanup
+    )
+
+
+def _remove_quietly(path: str):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 @app.post("/api/tts")
 async def text_to_speech(text: str = Form(...)):
     """
@@ -189,27 +239,13 @@ async def text_to_speech(text: str = Form(...)):
 
     Yêu cầu: pip install edge-tts
     """
-    if not _EDGE_TTS_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="edge-tts chưa được cài. Chạy: pip install edge-tts"
-        )
-    if not text or not text.strip():
-        raise HTTPException(status_code=400, detail="text không được rỗng")
+    return await _synthesize_tts(text)
 
-    try:
-        # Tạo file tạm để ghi MP3
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
-            tmp_path = f.name
 
-        communicate = _edge_tts.Communicate(text.strip(), voice=EDGE_TTS_VOICE)
-        await communicate.save(tmp_path)
-
-        return FileResponse(
-            tmp_path,
-            media_type="audio/mpeg",
-            filename="tts.mp3",
-            background=BackgroundTasks()   # FastAPI tự xóa file sau khi gửi
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"TTS lỗi: {str(e)}")
+@app.get("/api/tts")
+async def text_to_speech_get(text: str = Query(...)):
+    """
+    Giống POST /api/tts nhưng nhận text qua query string.
+    Chrome Extension phát giọng bằng thẻ Audio nên gọi: GET /api/tts?text=<văn bản>
+    """
+    return await _synthesize_tts(text)
